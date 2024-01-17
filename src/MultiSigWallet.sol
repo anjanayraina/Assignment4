@@ -57,13 +57,13 @@ contract MultiSigWallet is AccessControl{
    * @notice Emitted when a transaction is confirmed.
    * @param transactionId The ID of the transaction.
    */
-  event TransactionConfirmed(uint transactionId);
+  event TransactionConfirmed(bytes32 transactionId);
 
   /**
    * @notice Emitted when a transaction is executed.
    * @param transactionId The ID of the transaction.
    */
-  event TransactionExecuted(uint transactionId);
+  event TransactionExecuted(bytes32 transactionId);
 
 
   /**
@@ -84,12 +84,12 @@ contract MultiSigWallet is AccessControl{
       }
   }
 
-  fallback() external payable {
+  receive() external payable {
 
   }
 /**
    * @notice adds another owner of the contract  
-   * @param _to The recipient of the transaction.
+   * @param ownerAddress The address to be added in the owner array 
    */
   function addOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
     owners.push(ownerAddress);
@@ -98,25 +98,27 @@ contract MultiSigWallet is AccessControl{
   /**
    * @notice Submits a new transaction that gets added in the queue to get executed 
    * @param _to The recipient of the transaction.
+   * @param _value The value of the transaction .
    */
   function submitTransaction(address _to , uint256 _value ) external onlyRole(OWNER_ROLE) returns(bytes32){
       if (_to == address(0)) revert InvalidTransaction();
-      if (msg.value == 0) revert InvalidTransaction();
+      if (_value == 0) revert InvalidTransaction();
       bytes32 transactionHash = bytes32(keccak256(abi.encodePacked(transactionCount , _to , _value )));
       transactions[transactionHash] = Transaction({
           to: _to,
           value: _value,
           executed: false
       });
-      emit TransactionSubmitted(transactionCount, msg.sender, _to, msg.value);
-      
+      emit TransactionSubmitted(transactionCount, msg.sender, _to, _value);
+      transactionCount++;
+      return transactionHash;
   }
 
   /**
    * @notice Confirms a transaction.
    * @param _transactionId The ID of the transaction to confirm.
    */
-  function confirmTransaction(uint _transactionId) public onlyRole(OWNER_ROLE) {
+  function confirmTransaction(bytes32 _transactionId) public onlyRole(OWNER_ROLE) {
       if (isConfirmed[_transactionId][msg.sender]) revert AlreadyConfirmed();
       isConfirmed[_transactionId][msg.sender] = true;
       emit TransactionConfirmed(_transactionId);
@@ -131,18 +133,16 @@ contract MultiSigWallet is AccessControl{
     * @param _transactionId The ID of the transaction to check.
     * @return Returns true if the transaction has enough confirmations, false otherwise.
     */
-   function _isTransactionConfirmed(uint _transactionId) internal view returns (bool) {
-       require(_transactionId < transactionCount, "Invalid transaction");
+   function _isTransactionConfirmed(bytes32 _transactionId) internal view returns (bool) {
        uint confirmation;
-       for(uint i = 0; i < transactions.length; i++) {
+       for(uint i = 0; i < owners.length; i++) {
            if(isConfirmed[_transactionId][owners[i]]) {
                confirmation++;
            }
        }
        return confirmation >= minNumberConfirmationsRequired;
    }
-    function executeTransaction(uint _transactionId) public payable {
-        require(_transactionId<transactions.length,"Invalid transaction");
+    function executeTransaction(bytes32 _transactionId) public payable {
         require(!transactions[_transactionId].executed,"Transaction is already executed");
       
         (bool success,)= transactions[_transactionId].to.call{value:transactions[_transactionId].value}("");
