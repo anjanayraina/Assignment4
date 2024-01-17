@@ -16,7 +16,7 @@ contract MultiSigWallet is AccessControl {
     // Number of confirmations required to execute a transaction
     uint256 public minNumberConfirmationsRequired;
     //
-    uint256 transactionCount;
+    uint256 public transactionCount;
     /**
      * @notice Represents a transaction.
      * @param to The recipient of the transaction.
@@ -28,10 +28,11 @@ contract MultiSigWallet is AccessControl {
         address to;
         uint256 value;
         bool executed;
+        uint256 confirmations;
     }
 
     // Map of transaction IDs to maps of owners to boolean values indicating whether they have confirmed the transaction
-    mapping(bytes32 => mapping(address => bool)) isConfirmed;
+    mapping(bytes32 => mapping(address => bool)) public isConfirmed;
 
     // Mapping of all transactions
     mapping(bytes32 => Transaction) transactions;
@@ -74,18 +75,19 @@ contract MultiSigWallet is AccessControl {
      * @param _owners The initial owners of the wallet.
      * @param _minNumberConfirmationsRequired The number of confirmations required to execute a transaction.
      */
-    constructor(address[] memory _owners, uint256 _minNumberConfirmationsRequired) payable {
+    constructor(address[] memory _owners, uint256 _minNumberConfirmationsRequired, address admin) payable {
         if (_owners.length <= 1) revert LowOwnerArrayLength();
         if (_minNumberConfirmationsRequired == 0 || _minNumberConfirmationsRequired > _owners.length) {
             revert InvalidMinConfirmations();
         }
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _setRoleAdmin(OWNER_ROLE, DEFAULT_ADMIN_ROLE);
         minNumberConfirmationsRequired = _minNumberConfirmationsRequired;
 
         for (uint256 i = 0; i < _owners.length; i++) {
             if (_owners[i] == address(0)) revert NullAddressNotAllowed();
             owners.push(_owners[i]);
+            _grantRole(OWNER_ROLE, owners[i]);
         }
     }
 
@@ -97,6 +99,11 @@ contract MultiSigWallet is AccessControl {
 
     function addOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
         owners.push(ownerAddress);
+        _grantRole(OWNER_ROLE, ownerAddress);
+    }
+
+    function getTransaction(bytes32 transationID) public view returns (Transaction memory) {
+        return transactions[transationID];
     }
 
     /**
@@ -108,48 +115,45 @@ contract MultiSigWallet is AccessControl {
         if (_to == address(0)) revert InvalidTransaction();
         if (_value == 0) revert InvalidTransaction();
         bytes32 transactionHash = bytes32(keccak256(abi.encodePacked(transactionCount, _to, _value)));
-        transactions[transactionHash] = Transaction({to: _to, value: _value, executed: false});
+        transactions[transactionHash] = Transaction({to: _to, value: _value, executed: false, confirmations: 0});
         emit TransactionSubmitted(transactionCount, msg.sender, _to, _value);
         transactionCount++;
         return transactionHash;
     }
 
     /**
-     * @notice Confirms a transaction.
-     * @param _transactionId The ID of the transaction to confirm.
+     * @notice Confirms a transaction for the calling owner address
+     * @param transactionID The ID of the transaction to confirm.
      */
-    function confirmTransaction(bytes32 _transactionId) public onlyRole(OWNER_ROLE) {
-        if (isConfirmed[_transactionId][msg.sender]) revert AlreadyConfirmed();
-        if (!_isTransactionConfirmed(_transactionId)) {
-            revert NotEnoughConfirmations();
-        }
-        isConfirmed[_transactionId][msg.sender] = true;
-        executeTransaction(_transactionId);
-        emit TransactionConfirmed(_transactionId);
+    function confirmTransaction(bytes32 transactionID) public onlyRole(OWNER_ROLE) {
+        if (isConfirmed[transactionID][msg.sender]) revert AlreadyConfirmed();
+        isConfirmed[transactionID][msg.sender] = true;
+        transactions[transactionID].confirmations++;
+        emit TransactionConfirmed(transactionID);
     }
 
     /**
      * @notice Checks if a transaction has enough confirmations.
-     * @param _transactionId The ID of the transaction to check.
+     * @param transactionID The ID of the transaction to check.
      * @return Returns true if the transaction has enough confirmations, false otherwise.
      */
-    function _isTransactionConfirmed(bytes32 _transactionId) internal view returns (bool) {
-        uint256 confirmation;
-        for (uint256 i = 0; i < owners.length; i++) {
-            if (isConfirmed[_transactionId][owners[i]]) {
-                confirmation++;
-            }
-        }
-        return confirmation >= minNumberConfirmationsRequired;
+    function _minConfirmationsDone(bytes32 transactionID) internal view returns (bool) {
+        return transactions[transactionID].confirmations >= minNumberConfirmationsRequired;
     }
+    /**
+     * @notice Executes the transactions if a transaction has enough confirmations.
+     * @param transactionID The ID of the transaction to check.
+     */
 
-    function executeTransaction(bytes32 _transactionId) public payable {
-        require(!transactions[_transactionId].executed, "Transaction is already executed");
-
-        (bool success,) = transactions[_transactionId].to.call{value: transactions[_transactionId].value}("");
+    function executeTransaction(bytes32 transactionID) public payable onlyRole(OWNER_ROLE) {
+        require(!transactions[transactionID].executed, "Transaction is already executed");
+        if (!_minConfirmationsDone(transactionID)) {
+            revert NotEnoughConfirmations();
+        }
+        (bool success,) = transactions[transactionID].to.call{value: transactions[transactionID].value}("");
 
         require(success, "Transaction Execution Failed ");
-        transactions[_transactionId].executed = true;
-        emit TransactionExecuted(_transactionId);
+        transactions[transactionID].executed = true;
+        emit TransactionExecuted(transactionID);
     }
 }
