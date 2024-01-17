@@ -146,7 +146,7 @@ contract MultiSigWallet is AccessControl {
      */
 
     function executeTransaction(bytes32 transactionID) public payable onlyRole(OWNER_ROLE) {
-        require(!transactions[transactionID].executed, "Transaction is already executed");
+        // require(!transactions[transactionID].executed, "Transaction is already executed");
         if (!_minConfirmationsDone(transactionID)) {
             revert NotEnoughConfirmations();
         }

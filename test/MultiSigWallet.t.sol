@@ -6,7 +6,7 @@ import {MultiSigWallet} from "../src/MultiSigWallet.sol";
 
 contract MultiSigWalletTest is Test {
     MultiSigWallet public wallet;
-
+    error NotEnoughConfirmations();
     function setUp() public {
         address[] memory owners = new address[](3);
         owners[0] = address(0x123);
@@ -71,6 +71,26 @@ contract MultiSigWalletTest is Test {
         assertTrue(wallet.isConfirmed(txHash, address(0xabc)));
         assertTrue(wallet.isConfirmed(txHash, address(0x456)));
         assertTrue(wallet.isConfirmed(txHash, address(0x123)));
+        vm.prank(address(0x456));
+        wallet.executeTransaction(txHash);
+        assertEq(address(0x789).balance, 20 ether);
+    }
+
+        function test_ExecuteTransactionLessConfirmations() public {
+        vm.expectRevert(NotEnoughConfirmations.selector);
+        address recipient = address(0x789);
+        vm.startPrank(address(0x123));
+        uint256 value = 20 ether;
+        bytes32 txHash = wallet.submitTransaction(recipient, value);
+        wallet.confirmTransaction(txHash);
+        vm.stopPrank();
+        // vm.prank(address(0xabc));
+        // wallet.confirmTransaction(txHash);
+        // vm.prank(address(0x456));
+        // wallet.confirmTransaction(txHash);
+        // assertTrue(wallet.isConfirmed(txHash, address(0xabc)));
+        // assertTrue(wallet.isConfirmed(txHash, address(0x456)));
+        // assertTrue(wallet.isConfirmed(txHash, address(0x123)));
         vm.prank(address(0x456));
         wallet.executeTransaction(txHash);
         assertEq(address(0x789).balance, 20 ether);
