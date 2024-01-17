@@ -37,8 +37,6 @@ contract MultiSigWallet is AccessControl {
     // Mapping of all transactions
     mapping(bytes32 => Transaction) transactions;
 
-    // Array of all the owners
-    address[] owners;
     // Custom errors
 
     error NullAddressNotAllowed();
@@ -86,8 +84,7 @@ contract MultiSigWallet is AccessControl {
 
         for (uint256 i = 0; i < _owners.length; i++) {
             if (_owners[i] == address(0)) revert NullAddressNotAllowed();
-            owners.push(_owners[i]);
-            _grantRole(OWNER_ROLE, owners[i]);
+            _grantRole(OWNER_ROLE, _owners[i]);
         }
     }
 
@@ -98,7 +95,6 @@ contract MultiSigWallet is AccessControl {
      */
 
     function addOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        owners.push(ownerAddress);
         _grantRole(OWNER_ROLE, ownerAddress);
     }
 
