@@ -48,6 +48,7 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
     error InvalidMinConfirmations();
     error NotEnoughConfirmations();
     error TransactionAlreayExecuted();
+    error NotConfirmed();
 
     /**
      * @notice Emitted when a transaction is submitted.
@@ -62,7 +63,12 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      * @notice Emitted when a transaction is confirmed.
      * @param transactionId The ID of the transaction.
      */
-    event TransactionConfirmed(bytes32 transactionId);
+    event TransactionConfirmed(bytes32 transactionId , address indexed owner);
+    /**
+     * @notice Emitted when a transaction is cancelled.
+     * @param transactionId The ID of the transaction.
+     */
+    event TransactionCancelled(bytes32 transactionId ,address indexed owner);
 
     /**
      * @notice Emitted when a transaction is executed.
@@ -76,11 +82,15 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      */
     event NewOwnerAdded(address indexed owner);
     /**
+     * @notice Emitted when a owner is removed .
+     * @param owner The address of the owner removed
+     */
+    event OwnerRemoved(address indexed owner);
+    /**
      * @notice Constructor for the MultiSigWallet contract.
      * @param _owners The initial owners of the wallet.
      * @param _minNumberConfirmationsRequired The number of confirmations required to execute a transaction.
      */
-
     constructor(address[] memory _owners, uint256 _minNumberConfirmationsRequired, address admin) payable {
         if (_owners.length <= 1) revert LowOwnerArrayLength();
         if (_minNumberConfirmationsRequired == 0 || _minNumberConfirmationsRequired > _owners.length) {
@@ -153,7 +163,7 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
             revert NullAddressNotAllowed();
         }
         _revokeRole(OWNER_ROLE, ownerAddress);
-        emit NewOwnerAdded(ownerAddress);
+        emit OwnerRemoved(ownerAddress);
     }
 
 
@@ -177,10 +187,23 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      * @param transactionID The ID of the transaction to confirm.
      */
     function confirmTransaction(bytes32 transactionID) external onlyRole(OWNER_ROLE) {
-        if (isConfirmed[transactionID][msg.sender]) revert AlreadyConfirmed();
-        isConfirmed[transactionID][msg.sender] = true;
+        address owner = msg.sender;
+        if (isConfirmed[transactionID][owner]) revert AlreadyConfirmed();
+        isConfirmed[transactionID][owner] = true;
         transactions[transactionID].confirmations++;
-        emit TransactionConfirmed(transactionID);
+        emit TransactionConfirmed(transactionID , owner );
+    }
+
+        /**
+     * @notice Confirms a transaction for the calling owner address
+     * @param transactionID The ID of the transaction to confirm.
+     */
+    function cancelTransaction(bytes32 transactionID) external onlyRole(OWNER_ROLE) {
+        address owner = msg.sender;
+        if (!isConfirmed[transactionID][owner]) revert NotConfirmed();
+        isConfirmed[transactionID][owner] = false;
+        transactions[transactionID].confirmations--;
+        emit TransactionCancelled(transactionID , owner);
     }
 
     /**
