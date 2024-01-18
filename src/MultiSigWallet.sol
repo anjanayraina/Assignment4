@@ -71,10 +71,16 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
     event TransactionExecuted(bytes32 transactionId);
 
     /**
+     * @notice Emitted when a new owner is added .
+     * @param owner The address of the owner added
+     */
+    event NewOwnerAdded(address indexed owner);
+    /**
      * @notice Constructor for the MultiSigWallet contract.
      * @param _owners The initial owners of the wallet.
      * @param _minNumberConfirmationsRequired The number of confirmations required to execute a transaction.
      */
+
     constructor(address[] memory _owners, uint256 _minNumberConfirmationsRequired, address admin) payable {
         if (_owners.length <= 1) revert LowOwnerArrayLength();
         if (_minNumberConfirmationsRequired == 0 || _minNumberConfirmationsRequired > _owners.length) {
@@ -87,8 +93,16 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < _owners.length; i++) {
             if (_owners[i] == address(0)) revert NullAddressNotAllowed();
             _grantRole(OWNER_ROLE, _owners[i]);
+            emit NewOwnerAdded(_owners[i]);
         }
     }
+
+    // Public Functions
+    function getTransaction(bytes32 transationID) public view returns (Transaction memory) {
+        return transactions[transationID];
+    }
+
+    //External Functions
 
     receive() external payable {}
     /**
@@ -98,10 +112,7 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
 
     function addOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(OWNER_ROLE, ownerAddress);
-    }
-
-    function getTransaction(bytes32 transationID) public view returns (Transaction memory) {
-        return transactions[transationID];
+        emit NewOwnerAdded(ownerAddress);
     }
 
     /**
@@ -131,14 +142,6 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
     }
 
     /**
-     * @notice Checks if a transaction has enough confirmations.
-     * @param transactionID The ID of the transaction to check.
-     * @return Returns true if the transaction has enough confirmations, false otherwise.
-     */
-    function _minConfirmationsDone(bytes32 transactionID) internal view returns (bool) {
-        return transactions[transactionID].confirmations >= minNumberConfirmationsRequired;
-    }
-    /**
      * @notice Executes the transactions if a transaction has enough confirmations.
      * @param transactionID The ID of the transaction to check.
      */
@@ -155,5 +158,16 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
         (bool success,) = transactions[transactionID].to.call{value: transactions[transactionID].value}("");
         require(success, "Transaction Execution Failed ");
         emit TransactionExecuted(transactionID);
+    }
+
+    //Internal Function
+
+    /**
+     * @notice Checks if a transaction has enough confirmations.
+     * @param transactionID The ID of the transaction to check.
+     * @return Returns true if the transaction has enough confirmations, false otherwise.
+     */
+    function _minConfirmationsDone(bytes32 transactionID) internal view returns (bool) {
+        return transactions[transactionID].confirmations >= minNumberConfirmationsRequired;
     }
 }
