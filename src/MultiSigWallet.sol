@@ -124,14 +124,38 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
 
     receive() external payable {}
     /**
+     * @notice changes the minimmum amount of confirmations needed
+     * @param minConfirmations The new minimmum amount of confirmations needed
+     */
+    function changeMinConfirmations(uint256 minConfirmations) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        minNumberConfirmationsRequired = minConfirmations;
+    }
+    /**
      * @notice adds another owner of the contract
      * @param ownerAddress The address to be added in the owner array
      */
 
     function addOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if(ownerAddress == address(0)){
+            revert NullAddressNotAllowed();
+        }
         _grantRole(OWNER_ROLE, ownerAddress);
         emit NewOwnerAdded(ownerAddress);
     }
+
+        /**
+     * @notice removes an owner from the contract 
+     * @param ownerAddress The address to be removed from the owner array
+     */
+
+    function removeOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if(ownerAddress == address(0)){
+            revert NullAddressNotAllowed();
+        }
+        _revokeRole(OWNER_ROLE, ownerAddress);
+        emit NewOwnerAdded(ownerAddress);
+    }
+
 
     /**
      * @notice Submits a new transaction that gets added in the queue to get executed
