@@ -32,6 +32,15 @@ contract MultiSigWalletTest is Test {
         assertTrue(wallet.hasRole(wallet.OWNER_ROLE(), newOwner));
     }
 
+    function test_RemoveOwner() public {
+        address newOwner = address(0xdef);
+        wallet.addOwner(newOwner);
+        assertTrue(wallet.hasRole(wallet.OWNER_ROLE(), newOwner));
+        vm.startPrank(address(this));
+        wallet.removeOwner(newOwner);
+        assertFalse(wallet.hasRole(wallet.OWNER_ROLE() , newOwner));
+    }
+
     function testSubmitTransaction() public {
         address recipient = address(0x456);
         uint256 value = 10 ether;
