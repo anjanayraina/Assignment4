@@ -6,8 +6,10 @@ import {MultiSigWallet} from "../src/MultiSigWallet.sol";
 
 contract MultiSigWalletTest is Test {
     MultiSigWallet public wallet;
+
     error NotEnoughConfirmations();
     error AlreadyConfirmed();
+
     function setUp() public {
         address[] memory owners = new address[](3);
         owners[0] = address(0x123);
@@ -16,7 +18,8 @@ contract MultiSigWalletTest is Test {
         uint256 minConfirmations = 2;
         vm.deal(address(this), 1000 ether);
         wallet = new MultiSigWallet(owners, minConfirmations , address(this));
-        payable(wallet).call{value: 200 ether}("");
+        (bool success,) = payable(wallet).call{value: 200 ether}("");
+        require(success);
     }
 
     function testMinConfirmations() public {
@@ -77,7 +80,7 @@ contract MultiSigWalletTest is Test {
         assertEq(address(0x789).balance, 20 ether);
     }
 
-        function test_ExecuteTransactionLessConfirmations() public {
+    function test_ExecuteTransactionLessConfirmations() public {
         address recipient = address(0x789);
         vm.startPrank(address(0x123));
         uint256 value = 20 ether;
@@ -87,6 +90,5 @@ contract MultiSigWalletTest is Test {
         vm.prank(address(0x456));
         vm.expectRevert(NotEnoughConfirmations.selector);
         wallet.executeTransaction(txHash);
-
     }
 }

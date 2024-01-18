@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 pragma solidity ^0.8.4;
 
@@ -10,7 +11,7 @@ pragma solidity ^0.8.4;
  * @author Anjanay Raina
  * @notice This contract allows multiple owners to collectively control the funds in the wallet.
  */
-contract MultiSigWallet is AccessControl {
+contract MultiSigWallet is AccessControl, ReentrancyGuard {
     //
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     // Number of confirmations required to execute a transaction
@@ -46,6 +47,7 @@ contract MultiSigWallet is AccessControl {
     error LowOwnerArrayLength();
     error InvalidMinConfirmations();
     error NotEnoughConfirmations();
+    error TransactionAlreayExecuted();
 
     /**
      * @notice Emitted when a transaction is submitted.
@@ -121,7 +123,7 @@ contract MultiSigWallet is AccessControl {
      * @notice Confirms a transaction for the calling owner address
      * @param transactionID The ID of the transaction to confirm.
      */
-    function confirmTransaction(bytes32 transactionID) public onlyRole(OWNER_ROLE) {
+    function confirmTransaction(bytes32 transactionID) external onlyRole(OWNER_ROLE) {
         if (isConfirmed[transactionID][msg.sender]) revert AlreadyConfirmed();
         isConfirmed[transactionID][msg.sender] = true;
         transactions[transactionID].confirmations++;
@@ -141,15 +143,17 @@ contract MultiSigWallet is AccessControl {
      * @param transactionID The ID of the transaction to check.
      */
 
-    function executeTransaction(bytes32 transactionID) public payable onlyRole(OWNER_ROLE) {
-        // require(!transactions[transactionID].executed, "Transaction is already executed");
+    function executeTransaction(bytes32 transactionID) external payable nonReentrant onlyRole(OWNER_ROLE) {
+        // require(!transactions[transactionID].executed, "Transaction is already executed");\
+        if (transactions[transactionID].executed) {
+            revert TransactionAlreayExecuted();
+        }
         if (!_minConfirmationsDone(transactionID)) {
             revert NotEnoughConfirmations();
         }
-        (bool success,) = transactions[transactionID].to.call{value: transactions[transactionID].value}("");
-
-        require(success, "Transaction Execution Failed ");
         transactions[transactionID].executed = true;
+        (bool success,) = transactions[transactionID].to.call{value: transactions[transactionID].value}("");
+        require(success, "Transaction Execution Failed ");
         emit TransactionExecuted(transactionID);
     }
 }
