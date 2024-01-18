@@ -102,6 +102,24 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
         return transactions[transationID];
     }
 
+    /**
+     * @notice Executes the transaction if a transaction has enough confirmations.
+     * @param transactionID The ID of the transaction to check.
+     */
+
+    function executeTransaction(bytes32 transactionID) public nonReentrant onlyRole(OWNER_ROLE) {
+        if (transactions[transactionID].executed) {
+            revert TransactionAlreayExecuted();
+        }
+        if (!_minConfirmationsDone(transactionID)) {
+            revert NotEnoughConfirmations();
+        }
+        transactions[transactionID].executed = true;
+        (bool success,) = transactions[transactionID].to.call{value: transactions[transactionID].value}("");
+        require(success, "Transaction Execution Failed ");
+        emit TransactionExecuted(transactionID);
+    }
+
     //External Functions
 
     receive() external payable {}
@@ -123,7 +141,7 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
     function submitTransaction(address _to, uint256 _value) external onlyRole(OWNER_ROLE) returns (bytes32) {
         if (_to == address(0)) revert InvalidTransaction();
         if (_value == 0) revert InvalidTransaction();
-        bytes32 transactionHash = bytes32(keccak256(abi.encodePacked(transactionCount, _to, _value)));
+        bytes32 transactionHash = bytes32(keccak256(abi.encodePacked(transactionCount, _to, _value, msg.sender)));
         transactions[transactionHash] = Transaction({to: _to, value: _value, executed: false, confirmations: 0});
         emit TransactionSubmitted(transactionCount, msg.sender, _to, _value);
         transactionCount++;
@@ -143,21 +161,14 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
 
     /**
      * @notice Executes the transactions if a transaction has enough confirmations.
-     * @param transactionID The ID of the transaction to check.
+     * @param tranasctionsIDs The ID of the transactions to be executed.
      */
-
-    function executeTransaction(bytes32 transactionID) external payable nonReentrant onlyRole(OWNER_ROLE) {
-        // require(!transactions[transactionID].executed, "Transaction is already executed");\
-        if (transactions[transactionID].executed) {
-            revert TransactionAlreayExecuted();
+    function executeBatchTransactions(bytes32[] memory tranasctionsIDs) external onlyRole(OWNER_ROLE) {
+        uint256 i;
+        uint256 n = tranasctionsIDs.length;
+        for (; i < n; ++i) {
+            executeTransaction(tranasctionsIDs[i]);
         }
-        if (!_minConfirmationsDone(transactionID)) {
-            revert NotEnoughConfirmations();
-        }
-        transactions[transactionID].executed = true;
-        (bool success,) = transactions[transactionID].to.call{value: transactions[transactionID].value}("");
-        require(success, "Transaction Execution Failed ");
-        emit TransactionExecuted(transactionID);
     }
 
     //Internal Function
