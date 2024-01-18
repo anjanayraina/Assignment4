@@ -57,24 +57,24 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      * @param receiver The receiver of the transaction.
      * @param amount The amount of the transaction.
      */
-    event TransactionSubmitted(uint256 transactionId, address sender, address receiver, uint256 amount);
+    event TransactionSubmitted(uint256 indexed transactionId, address indexed sender, address receiver, uint256 amount);
 
     /**
      * @notice Emitted when a transaction is confirmed.
      * @param transactionId The ID of the transaction.
      */
-    event TransactionConfirmed(bytes32 transactionId, address indexed owner);
+    event TransactionConfirmed(bytes32 indexed transactionId, address indexed owner);
     /**
      * @notice Emitted when a transaction is cancelled.
      * @param transactionId The ID of the transaction.
      */
-    event TransactionCancelled(bytes32 transactionId, address indexed owner);
+    event TransactionCancelled(bytes32 indexed transactionId, address indexed owner);
 
     /**
      * @notice Emitted when a transaction is executed.
      * @param transactionId The ID of the transaction.
      */
-    event TransactionExecuted(bytes32 transactionId);
+    event TransactionExecuted(bytes32 indexed transactionId);
 
     /**
      * @notice Emitted when a new owner is added .
