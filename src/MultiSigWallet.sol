@@ -63,12 +63,12 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      * @notice Emitted when a transaction is confirmed.
      * @param transactionId The ID of the transaction.
      */
-    event TransactionConfirmed(bytes32 transactionId , address indexed owner);
+    event TransactionConfirmed(bytes32 transactionId, address indexed owner);
     /**
      * @notice Emitted when a transaction is cancelled.
      * @param transactionId The ID of the transaction.
      */
-    event TransactionCancelled(bytes32 transactionId ,address indexed owner);
+    event TransactionCancelled(bytes32 transactionId, address indexed owner);
 
     /**
      * @notice Emitted when a transaction is executed.
@@ -91,6 +91,7 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      * @param _owners The initial owners of the wallet.
      * @param _minNumberConfirmationsRequired The number of confirmations required to execute a transaction.
      */
+
     constructor(address[] memory _owners, uint256 _minNumberConfirmationsRequired, address admin) payable {
         if (_owners.length <= 1) revert LowOwnerArrayLength();
         if (_minNumberConfirmationsRequired == 0 || _minNumberConfirmationsRequired > _owners.length) {
@@ -137,6 +138,7 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      * @notice changes the minimmum amount of confirmations needed
      * @param minConfirmations The new minimmum amount of confirmations needed
      */
+
     function changeMinConfirmations(uint256 minConfirmations) external onlyRole(DEFAULT_ADMIN_ROLE) {
         minNumberConfirmationsRequired = minConfirmations;
     }
@@ -146,26 +148,25 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
      */
 
     function addOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if(ownerAddress == address(0)){
+        if (ownerAddress == address(0)) {
             revert NullAddressNotAllowed();
         }
         _grantRole(OWNER_ROLE, ownerAddress);
         emit NewOwnerAdded(ownerAddress);
     }
 
-        /**
-     * @notice removes an owner from the contract 
+    /**
+     * @notice removes an owner from the contract
      * @param ownerAddress The address to be removed from the owner array
      */
 
     function removeOwner(address ownerAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if(ownerAddress == address(0)){
+        if (ownerAddress == address(0)) {
             revert NullAddressNotAllowed();
         }
         _revokeRole(OWNER_ROLE, ownerAddress);
         emit OwnerRemoved(ownerAddress);
     }
-
 
     /**
      * @notice Submits a new transaction that gets added in the queue to get executed
@@ -191,19 +192,19 @@ contract MultiSigWallet is AccessControl, ReentrancyGuard {
         if (isConfirmed[transactionID][owner]) revert AlreadyConfirmed();
         isConfirmed[transactionID][owner] = true;
         transactions[transactionID].confirmations++;
-        emit TransactionConfirmed(transactionID , owner );
+        emit TransactionConfirmed(transactionID, owner);
     }
 
-        /**
-     * @notice Confirms a transaction for the calling owner address
-     * @param transactionID The ID of the transaction to confirm.
+    /**
+     * @notice Cancels a transaction for the calling owner address
+     * @param transactionID The ID of the transaction to cancel.
      */
     function cancelTransaction(bytes32 transactionID) external onlyRole(OWNER_ROLE) {
         address owner = msg.sender;
         if (!isConfirmed[transactionID][owner]) revert NotConfirmed();
         isConfirmed[transactionID][owner] = false;
         transactions[transactionID].confirmations--;
-        emit TransactionCancelled(transactionID , owner);
+        emit TransactionCancelled(transactionID, owner);
     }
 
     /**
