@@ -38,7 +38,7 @@ contract MultiSigWalletTest is Test {
         assertTrue(wallet.hasRole(wallet.OWNER_ROLE(), newOwner));
         vm.startPrank(address(this));
         wallet.removeOwner(newOwner);
-        assertFalse(wallet.hasRole(wallet.OWNER_ROLE() , newOwner));
+        assertFalse(wallet.hasRole(wallet.OWNER_ROLE(), newOwner));
     }
 
     function testSubmitTransaction() public {
@@ -70,7 +70,26 @@ contract MultiSigWalletTest is Test {
         assertTrue(wallet.isConfirmed(txHash, address(0x123)));
     }
 
-    function testExecuteTransaction() public {
+    function test_CancelTransaction() public {
+        address recipient = address(0x789);
+        vm.startPrank(address(0x123));
+        uint256 value = 20 ether;
+        bytes32 txHash = wallet.submitTransaction(recipient, value);
+        wallet.confirmTransaction(txHash);
+        vm.stopPrank();
+        vm.prank(address(0xabc));
+        wallet.confirmTransaction(txHash);
+        vm.startPrank(address(0x456));
+        wallet.confirmTransaction(txHash);
+        assertTrue(wallet.isConfirmed(txHash, address(0xabc)));
+        assertTrue(wallet.isConfirmed(txHash, address(0x456)));
+        assertTrue(wallet.isConfirmed(txHash, address(0x123)));
+        wallet.cancelTransaction(txHash);
+        assertFalse(wallet.isConfirmed(txHash, address(0x456)));
+        vm.stopPrank();
+    }
+
+    function test_ExecuteTransaction() public {
         address recipient = address(0x789);
         vm.startPrank(address(0x123));
         uint256 value = 20 ether;
@@ -87,6 +106,41 @@ contract MultiSigWalletTest is Test {
         vm.prank(address(0x456));
         wallet.executeTransaction(txHash);
         assertEq(address(0x789).balance, 20 ether);
+    }
+
+    function test_ExecuteTransactionBatch() public {
+        address recipient1 = address(0x789);
+        address recipient2 = address(1);
+        vm.startPrank(address(0x123));
+        uint256 value = 20 ether;
+        bytes32 txHash1 = wallet.submitTransaction(recipient1, value);
+        wallet.confirmTransaction(txHash1);
+        vm.stopPrank();
+        vm.startPrank(address(0x123));
+        bytes32 txHash2 = wallet.submitTransaction(recipient2, value);
+        wallet.confirmTransaction(txHash2);
+        vm.stopPrank();
+        vm.startPrank(address(0xabc));
+        wallet.confirmTransaction(txHash1);
+        wallet.confirmTransaction(txHash2);
+        vm.stopPrank();
+        vm.startPrank(address(0x456));
+        wallet.confirmTransaction(txHash1);
+        wallet.confirmTransaction(txHash2);
+        vm.stopPrank();
+        assertTrue(wallet.isConfirmed(txHash1, address(0xabc)));
+        assertTrue(wallet.isConfirmed(txHash1, address(0x456)));
+        assertTrue(wallet.isConfirmed(txHash1, address(0x123)));
+        assertTrue(wallet.isConfirmed(txHash2, address(0xabc)));
+        assertTrue(wallet.isConfirmed(txHash2, address(0x456)));
+        assertTrue(wallet.isConfirmed(txHash2, address(0x123)));
+        vm.startPrank(address(0x456));
+        bytes32[] memory bytesArray = new bytes32[](2);
+        bytesArray[0] = txHash1;
+        bytesArray[1] = txHash2;
+        wallet.executeBatchTransactions(bytesArray);
+        assertEq(recipient1.balance, 20 ether);
+        assertEq(recipient2.balance, 20 ether);
     }
 
     function test_ExecuteTransactionLessConfirmations() public {
