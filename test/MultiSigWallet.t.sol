@@ -69,7 +69,7 @@ contract MultiSigWalletTest is Test {
         uint256 value = 0;
         vm.startPrank(address(0x123));
         vm.expectRevert(InvalidTransaction.selector);
-        bytes32 txHash = wallet.submitTransaction(recipient, value);
+        wallet.submitTransaction(recipient, value);
         vm.stopPrank();
     }
 
@@ -78,7 +78,7 @@ contract MultiSigWalletTest is Test {
         uint256 value = 10 ether;
         vm.startPrank(address(0x123));
         vm.expectRevert(InvalidTransaction.selector);
-        bytes32 txHash = wallet.submitTransaction(recipient, value);
+        wallet.submitTransaction(recipient, value);
         vm.stopPrank();
     }
 
