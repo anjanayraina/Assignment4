@@ -2,9 +2,6 @@
 
 The MultiSigWallet contract is designed to establish a multi-signature wallet on the Ethereum blockchain. A multi-signature wallet requires multiple parties, known as owners, to agree on transactions before they can be executed. This type of wallet enhances security by distributing control among several owners rather than relying on a single point of authority.
 
-## Initialization
-The contract is deployed with a predefined list of owner addresses and a minimum number of confirmations required to execute a transaction. An admin address is also set, which has the authority to add or remove owners and change the minimum confirmation requirement.
-
 ## Owner Management
 The admin can add new owners or remove existing ones. Each owner has the `OWNER_ROLE`, which grants them the ability to interact with the wallet's transactional functions.
 
@@ -22,15 +19,6 @@ Owners who have confirmed a transaction can also cancel their confirmation by ca
 
 ## Batch Execution
 The contract provides a function to execute multiple transactions in a single call, provided that each transaction has the required number of confirmations.
-
-## Events
-The contract emits events for significant actions, such as when a transaction is submitted, confirmed, executed, or canceled, and when an owner is added or removed. These events facilitate off-chain monitoring and integration.
-
-## Access Control
-The contract uses OpenZeppelin's AccessControl for role-based permission management, allowing for flexible control over who can perform certain actions within the contract.
-
-## Reentrancy Protection
-The contract includes OpenZeppelin's ReentrancyGuard to prevent reentrancy attacks during the execution of transactions.
 
 ## Funding
 The contract can receive Ether directly to its address, which can then be managed through the multi-signature process.
@@ -53,8 +41,8 @@ foundryup
 
 2. **Clone This Repo and install dependencies**
 ``` 
-git clone https://github.com/anjanayraina/Assigment1
-cd Assigment1
+git clone https://github.com/anjanayraina/Assignment4
+cd Assignment4
 forge install
 
 ```
@@ -88,9 +76,6 @@ The protocol includes a function to execute multiple confirmed transactions in o
 ## Event Logging
 The contract emits events for critical actions, providing transparency and enabling off-chain applications to react to changes within the wallet.
 
-## Reentrancy Protection
-The ReentrancyGuard from OpenZeppelin is used to prevent reentrancy attacks, a common security vulnerability in smart contracts that handle external calls transferring Ether or tokens.
-
 ## Ether Management
 The contract is designed to handle Ether transactions. It includes a receive function to accept direct Ether transfers into the contract's balance.
 
@@ -112,12 +97,6 @@ The contract inherits from OpenZeppelin's ReentrancyGuard, preventing reentrancy
 
 ## Immutable Role Definitions
 The `OWNER_ROLE` is defined as a constant, preventing it from being modified after deployment, and ensuring that the security model cannot be altered.
-
-## Custom Errors
-The contract uses custom errors instead of revert strings, saving gas and providing clearer reasons for transaction failures. This helps in identifying issues more efficiently during interactions with the contract.
-
-## Event Logging
-The contract emits events for significant actions, such as transaction submission, confirmation, execution, and owner management. This allows for better monitoring and auditing of contract activity.
 
 ## Confirmation Tracking
 The contract maintains a mapping of confirmations for each transaction, ensuring that confirmations are tracked individually and cannot be duplicated.
